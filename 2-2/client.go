@@ -1,30 +1,28 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"log"
 	"net/http"
-	"strconv"
+	"os"
 )
 
-var version = flag.Int("version", 1, "")
-
 func main() {
-	flag.Parse()
+	version := os.Getenv("VERSION")
+	log.Printf("version: %s", version)
 
 	engine := &Engine{
-		version: *version,
+		version: version,
 	}
 	log.Fatal(http.ListenAndServe(":80", engine))
 }
 
 type Engine struct {
-	version int
+	version string
 }
 
 func (e *Engine) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	w.Header().Add("VERSION", strconv.Itoa(e.version))
+	w.Header().Add("VERSION", e.version)
 	for k, v := range req.Header {
 		w.Header().Add(k, fmt.Sprintf("%q", v))
 	}
