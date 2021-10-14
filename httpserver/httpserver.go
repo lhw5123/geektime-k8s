@@ -14,7 +14,7 @@ func main() {
 	engine := &Engine{
 		version: version,
 	}
-	log.Fatal(http.ListenAndServe(":80", engine))
+	log.Fatal(http.ListenAndServe("0.0.0.0:8080", engine))
 }
 
 type Engine struct {
