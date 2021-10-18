@@ -1,20 +1,40 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
 )
 
 func main() {
 	version := os.Getenv("VERSION")
+	if version == "" {
+		version = "0.0.1"
+	}
 	log.Printf("version: %s", version)
 
 	engine := &Engine{
 		version: version,
 	}
-	log.Fatal(http.ListenAndServe("0.0.0.0:8080", engine))
+
+	sc := make(chan os.Signal, 1)
+	signal.Notify(sc, os.Interrupt, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
+
+	go func() {
+		_ = http.ListenAndServe("0.0.0.0:8080", engine)
+	}()
+
+	<-sc
+	fmt.Println("server is closing")
+	err := engine.Shutdown(context.Background())
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("server is closed")
 }
 
 type Engine struct {
@@ -37,10 +57,15 @@ func (e *Engine) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		fmt.Printf("URL.Path = %q\n", req.URL.Path)
 	case "/healthz":
 		for k, v := range w.Header() {
-			fmt.Fprintf(w, "Header[%s]: %q\n", k, v)
+			_, _ = fmt.Fprintf(w, "Header[%s]: %q\n", k, v)
 		}
-		w.Write([]byte("ok"))
+		_, _ = w.Write([]byte("ok"))
 	default:
-		fmt.Fprintf(w, "404 NOT FOUND: %s\n", req.URL)
+		_, _ = fmt.Fprintf(w, "404 NOT FOUND: %s\n", req.URL)
 	}
+}
+
+func (e *Engine) Shutdown(ctx context.Context) error {
+	fmt.Println("server shutdown")
+	return nil
 }
