@@ -1,6 +1,10 @@
-FROM ubuntu
+FROM golang:1.17.1 AS builder
 
-RUN apt-get update && apt-get install
-ADD bin/amd64/httpserver /httpserver
-EXPOSE 8080
-ENTRYPOINT /httpserver
+RUN mkdir /app
+ADD . /app
+WORKDIR /app
+RUN mkdir bin && CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpatch -ldflags="-w -s" -gcflags "-N -l" -o bin/httpserver
+
+FROM alpine AS production
+COPY --from=builder /app/bin/* .
+CMD ["./httpserver", ":8080"]
